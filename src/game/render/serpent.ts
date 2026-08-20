@@ -119,8 +119,7 @@ function drawFrame(parts: BuiltParts, opts: Required<SerpentOptions>, pts: Pt[])
   g.fillPath();
 
   // 龙身主体
-  const bodyCol = Phaser.Display.Color.IntegerToColor(opts.bodyColor);
-  g.fillStyle(Phaser.Display.Color.GetColor(bodyCol.r, bodyCol.g, bodyCol.b), opts.alpha);
+  g.fillStyle(opts.bodyColor, opts.alpha);
   g.beginPath();
   g.moveTo(left[0].x, left[0].y);
   for (const p of left) g.lineTo(p.x, p.y);
