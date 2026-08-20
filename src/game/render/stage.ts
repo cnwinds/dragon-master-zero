@@ -322,24 +322,132 @@ export class StageRenderer {
     house("left");
     house("right");
 
-    // 低门洞（硬目标：穿门不碰灯）——加宽、门内点灯、轮廓清晰
-    const gateX = 850, gateW = 230;
-    const gateGlow = this.scene.add.image(gateX + gateW / 2, 560, "tex-glow").setScale(2.2, 3.4).setAlpha(0.3).setTint(0xe8b46a);
+    // 竹泾牌坊（硬目标：龙队从坊下穿过，不碰两侧灯柱）
+    // 结构：石柱 → 额枋 → 匾额 → 飞檐双层 → 檐角铃灯
+    const pl = 850;                                  // 左柱
+    const pr = 1080;                                 // 右柱
+    const pTop = 430;                                // 柱顶（额枋底）
+    const gcx = (pl + pr) / 2;
+
+    // 坊内暖光（穿过时被照亮）
+    const gateGlow = this.scene.add.image(gcx, 600, "tex-glow").setScale(2.4, 3.2).setAlpha(0.26).setTint(0xe8b46a);
     this.container.add(gateGlow);
-    this.lights.push({ sprite: gateGlow, base: 0.3, phase: 7 });
-    g.fillStyle(0x0a141f, 1);
-    g.fillRect(gateX, 380, gateW, 420);
-    g.lineStyle(6, 0x4a7059, 0.95);
-    g.strokeRect(gateX, 380, gateW, 420);
-    g.fillStyle(0x3a5f4a, 1);
-    g.fillRect(gateX, 380, gateW, 16);
-    // 门楣灯
-    for (const dx of [gateX + 26, gateX + gateW / 2, gateX + gateW - 26]) {
-      const lamp = this.scene.add.image(dx, 428, "tex-lantern").setScale(0.34).setAlpha(0.95);
+    this.lights.push({ sprite: gateGlow, base: 0.26, phase: 7 });
+
+    // —— 石柱（两侧，上细下粗，石纹）——
+    for (const px of [pl, pr]) {
+      g.fillStyle(0x22303f, 1);
+      g.fillPoints(
+        [
+          { x: px - 13, y: groundY },
+          { x: px - 9, y: pTop },
+          { x: px + 9, y: pTop },
+          { x: px + 13, y: groundY },
+        ],
+        true
+      );
+      g.lineStyle(2, 0x39506a, 0.9);
+      g.strokePoints(
+        [{ x: px - 13, y: groundY }, { x: px - 9, y: pTop }, { x: px + 9, y: pTop }, { x: px + 13, y: groundY }],
+        true,
+        false
+      );
+      // 柱身受光边
+      g.lineStyle(2, 0x4a6a8a, 0.55);
+      g.beginPath();
+      g.moveTo(px - 8, groundY - 8);
+      g.lineTo(px - 6, pTop + 6);
+      g.strokePath();
+      // 柱础
+      g.fillStyle(0x1a2532, 1);
+      g.fillRect(px - 18, groundY - 16, 36, 16);
+    }
+
+    // —— 额枋（横梁）——
+    g.fillStyle(0x2c3e50, 1);
+    g.fillRect(pl - 22, pTop - 26, pr - pl + 44, 26);
+    g.lineStyle(2, 0x4a6a8a, 0.7);
+    g.strokeRect(pl - 22, pTop - 26, pr - pl + 44, 26);
+
+    // —— 匾额（坊名）——
+    const plaqueW = 150, plaqueH = 46;
+    g.fillStyle(0x0d141d, 1);
+    g.fillRect(gcx - plaqueW / 2, pTop - 22, plaqueW, plaqueH);
+    g.lineStyle(3, 0xc79a45, 0.95);
+    g.strokeRect(gcx - plaqueW / 2, pTop - 22, plaqueW, plaqueH);
+    g.lineStyle(1, 0x8a6420, 0.8);
+    g.strokeRect(gcx - plaqueW / 2 + 5, pTop - 17, plaqueW - 10, plaqueH - 10);
+    const plaque = this.scene.add.text(gcx, pTop + 1, "竹 泾 灯 市", {
+      fontFamily: '"Noto Serif SC","SimSun",serif',
+      fontSize: "22px",
+      color: "#E9E0C8",
+      fontStyle: "bold",
+      letterSpacing: 4,
+    }).setOrigin(0.5);
+    this.container.add(plaque);
+
+    // —— 下层飞檐（两端起翘）——
+    g.fillStyle(0x14213a, 1);
+    g.fillPoints(
+      [
+        { x: pl - 70, y: pTop - 34 },
+        { x: pl - 30, y: pTop - 52 },
+        { x: pr + 30, y: pTop - 52 },
+        { x: pr + 70, y: pTop - 34 },
+        { x: pr + 34, y: pTop - 40 },
+        { x: pl - 34, y: pTop - 40 },
+      ],
+      true
+    );
+    g.lineStyle(2, 0xc79a45, 0.75);
+    strokeQuad(g, { x: pl - 70, y: pTop - 34 }, { x: pl - 34, y: pTop - 58 }, { x: pl - 20, y: pTop - 60 });
+    strokeQuad(g, { x: pr + 70, y: pTop - 34 }, { x: pr + 34, y: pTop - 58 }, { x: pr + 20, y: pTop - 60 });
+    // 檐瓦线
+    g.lineStyle(1.2, 0x3a5068, 0.8);
+    for (let i = 1; i <= 6; i++) {
+      const t = i / 7;
+      const wx = pl - 40 + (pr - pl + 80) * t;
+      g.beginPath();
+      g.moveTo(wx, pTop - 42);
+      g.lineTo(wx, pTop - 52);
+      g.strokePath();
+    }
+
+    // —— 上层小顶 + 正脊 ——
+    g.fillStyle(0x101b30, 1);
+    g.fillPoints(
+      [
+        { x: gcx - 90, y: pTop - 56 },
+        { x: gcx - 40, y: pTop - 84 },
+        { x: gcx + 40, y: pTop - 84 },
+        { x: gcx + 90, y: pTop - 56 },
+        { x: gcx + 40, y: pTop - 62 },
+        { x: gcx - 40, y: pTop - 62 },
+      ],
+      true
+    );
+    g.lineStyle(2.5, 0xc79a45, 0.85);
+    g.beginPath();
+    g.moveTo(gcx - 40, pTop - 86);
+    g.lineTo(gcx + 40, pTop - 86);
+    g.strokePath();
+    // 脊上宝顶
+    g.fillStyle(0xc79a45, 0.95);
+    g.fillCircle(gcx, pTop - 92, 5);
+    g.fillCircle(gcx, pTop - 100, 3);
+
+    // —— 檐角风灯（四盏小灯）——
+    for (const [lx, ly] of [[pl - 58, pTop - 42], [pr + 58, pTop - 42], [gcx - 80, pTop - 62], [gcx + 80, pTop - 62]] as const) {
+      g.lineStyle(1.5, 0x6b5030, 0.9);
+      g.beginPath();
+      g.moveTo(lx, ly);
+      g.lineTo(lx, ly + 10);
+      g.strokePath();
+      const lamp = this.scene.add.image(lx, ly + 20, "tex-lantern").setScale(0.3).setAlpha(0.95);
       this.container.add(lamp);
-      const lg = this.scene.add.image(dx, 428, "tex-glow").setScale(0.55).setAlpha(0.5);
+      const lg = this.scene.add.image(lx, ly + 20, "tex-glow").setScale(0.55).setAlpha(0.5);
       this.container.add(lg);
-      this.lights.push({ sprite: lg, base: 0.5, phase: dx / 40 });
+      this.lights.push({ sprite: lg, base: 0.5, phase: lx / 40 });
     }
 
     // 错位灯柱 + 灯笼串
