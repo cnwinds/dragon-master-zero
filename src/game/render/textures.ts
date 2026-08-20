@@ -189,37 +189,63 @@ export function generateTextures(scene: Phaser.Scene): void {
       ctx.stroke();
     }
   });
-  // 老街：石板路
-  canvasTexture(scene, "ground-street", 640, 300, (ctx) => {
-    ctx.fillStyle = "#161f2b";
-    ctx.fillRect(0, 0, 640, 300);
-    // 石板：横排错缝
+  // 老街：石板路（原生1920宽，无拉伸；错缝+磨面+裂纹+街心走亮）
+  canvasTexture(scene, "ground-street", 1920, 300, (ctx) => {
+    ctx.fillStyle = "#141c27";
+    ctx.fillRect(0, 0, 1920, 300);
     const rows = 7;
+    const rowH = 300 / rows;
     for (let r = 0; r < rows; r++) {
-      const y = (r / rows) * 300;
-      const h = 300 / rows;
-      const offset = (r % 2) * 55;
-      for (let c = -1; c < 5; c++) {
-        const x = c * 128 + offset;
-        const shade = 0.05 + Math.random() * 0.05;
-        ctx.fillStyle = `rgba(233,224,200,${shade})`;
-        ctx.fillRect(x + 2, y + 2, 124, h - 4);
-        ctx.strokeStyle = "rgba(0,0,0,0.45)";
+      const y = r * rowH;
+      let x = -(r % 2) * 90 - Math.random() * 60;
+      while (x < 1920) {
+        const w = 150 + Math.random() * 130;
+        // 石板底色（微差）
+        const l = 8 + Math.random() * 7;
+        ctx.fillStyle = `rgba(${30 + l}, ${40 + l}, ${54 + l}, 1)`;
+        ctx.fillRect(x + 2, y + 2, w - 4, rowH - 4);
+        // 顶棱受光
+        ctx.fillStyle = "rgba(233,224,200,0.07)";
+        ctx.fillRect(x + 3, y + 3, w - 6, 2);
+        // 缝
+        ctx.strokeStyle = "rgba(0,0,0,0.55)";
         ctx.lineWidth = 2;
-        ctx.strokeRect(x + 2, y + 2, 124, h - 4);
+        ctx.strokeRect(x + 2, y + 2, w - 4, rowH - 4);
+        // 裂纹（部分石板）
+        if (Math.random() < 0.4) {
+          ctx.strokeStyle = "rgba(0,0,0,0.35)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          const cx = x + w * 0.3 + Math.random() * w * 0.4;
+          const cy = y + rowH * 0.3 + Math.random() * rowH * 0.3;
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + (Math.random() - 0.5) * 34, cy + (Math.random() - 0.5) * 12);
+          ctx.stroke();
+        }
+        x += w;
       }
     }
-    // 磨损与裂纹
-    for (let i = 0; i < 30; i++) {
-      ctx.strokeStyle = "rgba(0,0,0,0.3)";
-      ctx.lineWidth = 1;
-      const x = Math.random() * 640, y = Math.random() * 300;
+    // 街心走亮（行人磨出的浅带）
+    const wear = ctx.createLinearGradient(0, 40, 0, 280);
+    wear.addColorStop(0, "rgba(233,224,200,0.07)");
+    wear.addColorStop(0.5, "rgba(233,224,200,0.035)");
+    wear.addColorStop(1, "rgba(233,224,200,0)");
+    ctx.fillStyle = wear;
+    ctx.fillRect(0, 0, 1920, 300);
+    // 湿痕（几道反光）
+    for (let i = 0; i < 7; i++) {
+      const x = 150 + Math.random() * 1620;
+      const y = 30 + Math.random() * 220;
+      const g2 = ctx.createRadialGradient(x, y, 2, x, y, 26 + Math.random() * 30);
+      g2.addColorStop(0, "rgba(159,196,222,0.06)");
+      g2.addColorStop(1, "rgba(159,196,222,0)");
+      ctx.fillStyle = g2;
       ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 10);
-      ctx.stroke();
+      ctx.ellipse(x, y, 34, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
   });
+
   // 河岸：木质台板
   canvasTexture(scene, "ground-river", 640, 300, (ctx) => {
     ctx.fillStyle = "#231a12";

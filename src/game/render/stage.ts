@@ -154,34 +154,173 @@ export class StageRenderer {
     g.strokePath();
   }
 
-  /** 老街灯阵：纵深狭窄、低门洞、错位灯柱、街坊剪影 */
+  /** 老街灯阵：纵深狭窄、低门洞、错位灯柱、有结构的楼房与商铺 */
   private buildStreet(g: Phaser.GameObjects.Graphics, groundY: number): void {
-    // 两侧屋影（透视纵深）
-    g.fillStyle(0x0a121d, 0.96);
-    g.fillPoints(
-      [
-        { x: 0, y: 200 }, { x: 300, y: 340 }, { x: 300, y: 1080 }, { x: 0, y: 1080 },
-      ],
-      true
-    );
-    g.fillPoints(
-      [
-        { x: 1920, y: 200 }, { x: 1620, y: 340 }, { x: 1620, y: 1080 }, { x: 1920, y: 1080 },
-      ],
-      true
-    );
-    // 中景屋檐
-    g.fillStyle(0x0e1a29, 0.92);
-    g.fillRect(300, 420, 240, 660);
-    g.fillRect(1380, 420, 240, 660);
-    g.fillStyle(0x122236, 0.85);
-    g.fillRect(330, 470, 180, 130);
-    g.fillRect(1410, 470, 180, 130);
-    // 暖窗
-    for (const [x, y] of [[352, 500], [452, 500], [1432, 500], [1532, 500]] as const) {
-      const win = this.scene.add.image(x, y, "tex-glow").setScale(0.5, 0.42).setAlpha(0.5).setTint(0xe8b46a);
-      this.container.add(win);
+    // ===== 层0：街道尽头的暗拱与远灯（纵深起点） =====
+    const farGlow = this.scene.add.image(960, 690, "tex-glow").setScale(4.5, 1.6).setAlpha(0.16).setTint(0xe8b46a);
+    this.container.add(farGlow);
+    this.lights.push({ sprite: farGlow, base: 0.16, phase: 5 });
+    g.fillStyle(0x060b12, 0.9);
+    g.fillRect(890, 600, 140, 200); // 尽头暗巷
+    for (const [lx, ly] of [[930, 660], [1010, 640], [975, 700]] as const) {
+      const fg = this.scene.add.image(lx, ly, "tex-glow").setScale(0.3).setAlpha(0.3).setTint(0xe8b46a);
+      this.container.add(fg);
     }
+
+    // ===== 层1：后排楼影（更低、更暗，一层剪影） =====
+    g.fillStyle(0x0a121d, 0.96);
+    for (const [x, w, h] of [[60, 260, 300], [380, 200, 240], [1450, 210, 250], [1690, 230, 310]] as const) {
+      g.fillRect(x, 640 - h, w, h);
+      // 后排小窗
+      g.fillStyle(0x0a121d, 0.96);
+      for (let wy = 640 - h + 40; wy < 560; wy += 60) {
+        g.fillStyle = g.fillStyle; // keep
+        g.fillStyle(0x1b2b3e, 0.5);
+        g.fillRect(x + w / 2 - 12, wy, 24, 30);
+      }
+    }
+
+    // ===== 层2：左右前楼（坡顶+檐+木壁+楼窗+铺面） =====
+    const house = (side: "left" | "right") => {
+      const x0 = side === "left" ? 0 : 1380;
+      const w = side === "left" ? 340 : 540;
+      const topY = 330;
+      const lean = side === "left" ? 34 : -34; // 向街心微倾（透视）
+      // 坡顶（两层叠瓦）
+      g.fillStyle(0x0d1723, 1);
+      g.fillPoints(
+        [
+          { x: x0 - 20, y: topY + 60 },
+          { x: x0 + w * 0.16, y: topY },
+          { x: x0 + w * 0.84, y: topY },
+          { x: x0 + w + 20, y: topY + 60 },
+          { x: x0 + w + 20, y: topY + 78 },
+          { x: x0 - 20, y: topY + 78 },
+        ],
+        true
+      );
+      // 瓦线
+      g.lineStyle(1.5, 0x24354a, 0.7);
+      for (let i = 1; i <= 5; i++) {
+        const t = i / 6;
+        g.beginPath();
+        g.moveTo(x0 - 20 + (w + 40) * t * 0.5, topY + 60 - 60 * t);
+        g.lineTo(x0 - 20 + (w + 40) * (1 - (1 - t) * 0.5), topY + 60 - 60 * t);
+        g.strokePath();
+      }
+      // 檐口与斗拱短枋
+      g.fillStyle(0x1a2836, 1);
+      g.fillRect(x0 - 20, topY + 78, w + 40, 12);
+      g.lineStyle(4, 0x22323f, 0.9);
+      for (let bx = x0 + 6; bx < x0 + w; bx += 64) {
+        g.beginPath();
+        g.moveTo(bx, topY + 90);
+        g.lineTo(bx, topY + 108);
+        g.strokePath();
+      }
+      // 楼身（木板壁，向街心微倾）
+      const wallColor = 0x101b29;
+      g.fillStyle(wallColor, 1);
+      g.fillPoints(
+        [
+          { x: x0, y: topY + 92 },
+          { x: x0 + w, y: topY + 92 },
+          { x: x0 + w + lean, y: groundY },
+          { x: x0 + lean * 0.4, y: groundY },
+        ],
+        true
+      );
+      // 板缝
+      g.lineStyle(1.2, 0x1d2c3d, 0.8);
+      for (let px = x0 + 30; px < x0 + w; px += 34) {
+        g.beginPath();
+        g.moveTo(px, topY + 96);
+        g.lineTo(px + lean * 0.55, groundY);
+        g.strokePath();
+      }
+      // 横梁
+      g.lineStyle(3, 0x22323f, 0.9);
+      g.beginPath();
+      g.moveTo(x0 + 4, topY + 220);
+      g.lineTo(x0 + w - 4 + lean * 0.3, topY + 220);
+      g.strokePath();
+
+      // 楼上格子窗（框+棂+暖光）
+      const winX = x0 + w * (side === "left" ? 0.18 : 0.3);
+      const winW = 150;
+      const winY = topY + 120;
+      const win = this.scene.add.image(winX + winW / 2, winY + 34, "tex-glow").setScale(1.5, 0.9).setAlpha(0.5).setTint(0xe8b46a);
+      this.container.add(win);
+      this.lights.push({ sprite: win, base: 0.5, phase: winX / 70 });
+      g.lineStyle(4, 0x0a141f, 1);
+      g.strokeRect(winX, winY, winW, 68);
+      g.lineStyle(2, 0x0a141f, 0.95);
+      for (let i = 1; i < 4; i++) {
+        g.beginPath();
+        g.moveTo(winX + (winW / 4) * i, winY);
+        g.lineTo(winX + (winW / 4) * i, winY + 68);
+        g.strokePath();
+      }
+      g.beginPath();
+      g.moveTo(winX, winY + 34);
+      g.lineTo(winX + winW, winY + 34);
+      g.strokePath();
+
+      // 楼下铺面（暗口）
+      g.fillStyle(0x070d15, 1);
+      g.fillRect(x0 + w * 0.14, groundY - 150, w * 0.62, 150);
+      g.lineStyle(3, 0x22323f, 0.9);
+      g.strokeRect(x0 + w * 0.14, groundY - 150, w * 0.62, 150);
+      // 铺面灯笼一只
+      const slx = x0 + w * 0.14 + 26;
+      const slamp = this.scene.add.image(slx, groundY - 128, "tex-lantern").setScale(0.42);
+      this.container.add(slamp);
+      const slg = this.scene.add.image(slx, groundY - 126, "tex-glow").setScale(0.8).setAlpha(0.45);
+      this.container.add(slg);
+      this.lights.push({ sprite: slg, base: 0.45, phase: slx / 55 });
+
+      // 幌子：挂杆+梯形布+字+穗（楼侧、铺面上方）
+      const hx = x0 + w * 0.72;
+      const hy = topY + 240;
+      g.lineStyle(3, 0x6b5030, 0.95);
+      g.beginPath();
+      g.moveTo(hx - 30, hy);
+      g.lineTo(hx + 30, hy);
+      g.strokePath();
+      g.beginPath();
+      g.moveTo(hx, hy);
+      g.lineTo(hx, hy + 10);
+      g.strokePath();
+      const banner = this.scene.add.text(hx, hy + 40, side === "left" ? "茶" : "灯", {
+        fontFamily: '"Noto Serif SC","SimSun",serif',
+        fontSize: "26px",
+        color: "#E9E0C8",
+      }).setOrigin(0.5);
+      this.container.add(banner);
+      // 梯形布
+      g.fillStyle(0x8f2f27, 0.94);
+      g.fillPoints(
+        [
+          { x: hx - 15, y: hy + 10 },
+          { x: hx + 15, y: hy + 10 },
+          { x: hx + 12, y: hy + 66 },
+          { x: hx - 12, y: hy + 66 },
+        ],
+        true
+      );
+      g.lineStyle(1.5, 0x5d1f1a, 1);
+      g.strokePoints([{ x: hx - 15, y: hy + 10 }, { x: hx + 15, y: hy + 10 }, { x: hx + 12, y: hy + 66 }, { x: hx - 12, y: hy + 66 }], true, false);
+      // 底穗
+      g.lineStyle(2, 0xc79a45, 0.9);
+      for (const dx of [-8, 0, 8]) {
+        g.beginPath();
+        g.moveTo(hx + dx, hy + 66);
+        g.lineTo(hx + dx, hy + 80);
+        g.strokePath();
+      }
+    };
+    house("left");
+    house("right");
 
     // 低门洞（硬目标：穿门不碰灯）——加宽、门内点灯、轮廓清晰
     const gateX = 850, gateW = 230;
@@ -235,35 +374,6 @@ export class StageRenderer {
         this.container.add(glow);
         this.lights.push({ sprite: glow, base: 0.4, phase: lx / 60 });
       }
-    }
-
-    // 商铺幌子（屋檐下挂的布幌）
-    for (const [bx, by, ch] of [[356, 466, "茶"], [1436, 466, "灯"]] as const) {
-      g.fillStyle(0x8f2f27, 0.92);
-      g.fillRect(bx - 16, by, 32, 46);
-      const banner = this.scene.add.text(bx, by + 24, ch, {
-        fontFamily: '"Noto Serif SC","SimSun",serif',
-        fontSize: "26px",
-        color: "#E9E0C8",
-      }).setOrigin(0.5);
-      this.container.add(banner);
-      g.lineStyle(2, 0x6b5030, 0.9);
-      g.beginPath();
-      g.moveTo(bx, 420);
-      g.lineTo(bx, by);
-      g.strokePath();
-    }
-    // 窗棂（暖窗加格子）
-    g.lineStyle(2, 0x0a141f, 0.9);
-    for (const [wx, wy] of [[352, 500], [452, 500], [1432, 500], [1532, 500]] as const) {
-      g.beginPath();
-      g.moveTo(wx + 45, wy - 12);
-      g.lineTo(wx + 45, wy + 38);
-      g.strokePath();
-      g.beginPath();
-      g.moveTo(wx + 10, wy + 13);
-      g.lineTo(wx + 80, wy + 13);
-      g.strokePath();
     }
 
     // 街坊剪影（后景，低细节但可读）
