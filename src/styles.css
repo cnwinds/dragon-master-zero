@@ -43,7 +43,10 @@ html, body {
 
 #ui-root {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   z-index: 10;
 }
@@ -547,8 +550,8 @@ html, body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(860px, 92vw);
-  max-height: 88vh;
+  width: min(860px, 92%);
+  max-height: 88%;
   overflow-y: auto;
   background-color: var(--paper);
   background-image: var(--paper-url);
@@ -676,45 +679,136 @@ html, body {
 .title-ui {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  padding-bottom: 9vh;
-  gap: 14px;
-  background: linear-gradient(180deg, transparent 55%, rgba(11, 20, 31, 0.75));
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.85s ease, transform 0.85s ease;
 }
+.title-ui.is-in {
+  opacity: 1;
+  transform: none;
+}
+.title-ui > * { pointer-events: auto; }
 .title-name {
   position: absolute;
-  top: 12vh;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
 }
-.title-name h1 {
-  display: none; /* 书法标题由画布渲染 */
+.title-name h1 { font-size: 1px; }
+.title-buttons {
+  position: absolute;
+  right: max(28px, calc(3.2% + var(--safe-r)));
+  top: 58%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
 }
-.title-name {
-  top: 250px;
-}
-.title-name .tagline {
-  margin-top: 0;
-  color: var(--paper-dim);
-  font-size: clamp(13px, 1.4vw, 17px);
-  letter-spacing: 7px;
-}
-.title-buttons { display: flex; flex-direction: column; gap: 10px; align-items: center; }
-.title-buttons .btn {
-  min-width: 232px;
-  letter-spacing: 10px;
-  border-left: 4px solid var(--bamboo);
-  border-radius: 3px;
+.title-btn {
+  position: relative;
+  appearance: none;
+  font-family: var(--font);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.48em;
+  text-indent: 0.48em;
+  color: var(--paper);
+  min-width: 188px;
+  min-height: 48px;
+  padding: 12px 28px 12px 22px;
+  border: 1px solid rgba(199, 154, 69, 0.36);
+  border-radius: 0;
+  cursor: pointer;
   background:
-    repeating-linear-gradient(90deg, rgba(233, 224, 200, 0.09) 0 3px, rgba(233, 224, 200, 0.035) 3px 7px),
-    linear-gradient(180deg, rgba(233, 224, 200, 0.13), rgba(233, 224, 200, 0.04));
+    linear-gradient(var(--gold), var(--gold)) left 0 top 0 / 12px 1.5px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) left 0 top 0 / 1.5px 12px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right 0 top 0 / 12px 1.5px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right 0 top 0 / 1.5px 12px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) left 0 bottom 0 / 12px 1.5px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) left 0 bottom 0 / 1.5px 12px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right 0 bottom 0 / 12px 1.5px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right 0 bottom 0 / 1.5px 12px no-repeat,
+    linear-gradient(180deg, rgba(233, 224, 200, 0.15), rgba(11, 20, 31, 0.62));
+  box-shadow:
+    0 0 0 1px rgba(5, 8, 13, 0.45) inset,
+    0 14px 32px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  transform: translateX(16px);
+  transition:
+    opacity 0.55s ease,
+    transform 0.55s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
-.title-buttons .btn:hover { border-left-color: var(--gold); }
+.title-ui.is-in .title-btn {
+  opacity: 1;
+  transform: none;
+}
+.title-ui.is-in .title-btn:nth-child(1) { transition-delay: 0.06s; }
+.title-ui.is-in .title-btn:nth-child(2) { transition-delay: 0.16s; }
+.title-ui.is-in .title-btn:nth-child(3) { transition-delay: 0.26s; }
+.title-btn:hover {
+  color: #fff8e8;
+  border-color: rgba(199, 154, 69, 0.78);
+  box-shadow:
+    0 0 0 1px rgba(199, 154, 69, 0.18) inset,
+    0 0 22px rgba(199, 154, 69, 0.2),
+    0 14px 32px rgba(0, 0, 0, 0.34);
+}
+.title-btn:active { transform: translateY(1px); }
+.title-btn.primary {
+  color: #f6ecd0;
+  border-color: rgba(182, 64, 54, 0.72);
+  padding-right: 38px;
+  background:
+    linear-gradient(var(--cinnabar), var(--cinnabar)) left 0 top 0 / 12px 1.5px no-repeat,
+    linear-gradient(var(--cinnabar), var(--cinnabar)) left 0 top 0 / 1.5px 12px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right 0 top 0 / 12px 1.5px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right 0 top 0 / 1.5px 12px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) left 0 bottom 0 / 12px 1.5px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) left 0 bottom 0 / 1.5px 12px no-repeat,
+    linear-gradient(var(--cinnabar), var(--cinnabar)) right 0 bottom 0 / 12px 1.5px no-repeat,
+    linear-gradient(var(--cinnabar), var(--cinnabar)) right 0 bottom 0 / 1.5px 12px no-repeat,
+    linear-gradient(180deg, rgba(182, 64, 54, 0.34), rgba(11, 20, 31, 0.66));
+}
+.title-btn.primary::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin-top: -5px;
+  border: 1px solid var(--cinnabar);
+  background: rgba(182, 64, 54, 0.45);
+  transform: rotate(9deg);
+  box-shadow: 0 0 0 1px rgba(233, 224, 200, 0.12) inset;
+}
+.title-btn.primary:hover {
+  color: #fff;
+  border-color: var(--cinnabar);
+  box-shadow:
+    0 0 0 1px rgba(182, 64, 54, 0.22) inset,
+    0 0 24px rgba(182, 64, 54, 0.22),
+    0 14px 32px rgba(0, 0, 0, 0.34);
+}
+.title-endings {
+  position: absolute;
+  left: auto;
+  right: max(28px, calc(3.2% + var(--safe-r)));
+  bottom: max(22px, calc(12px + var(--safe-b)));
+  transform: none;
+  text-align: right;
+  color: var(--mist);
+  font-size: 12px;
+  letter-spacing: 3px;
+  pointer-events: none;
+  opacity: 0.8;
+}
 
 /* ———— 纸面板上的按钮（墨字描边） ———— */
 .center-panel .btn {
@@ -838,11 +932,11 @@ html, body {
 
 /* ———— 手机横屏标题 ———— */
 @media (max-height: 500px) {
-  .title-ui { padding-bottom: 12px; gap: 8px; }
-  .title-name { top: 8px; }
-  .title-name h1 { font-size: clamp(30px, 7vh, 44px); letter-spacing: 8px; text-indent: 8px; }
-  .title-name .tagline { font-size: 11px; letter-spacing: 3px; margin-top: 4px; }
-  .title-buttons .btn { min-width: 170px; padding: 7px 14px; font-size: 14px; letter-spacing: 4px; }
+  .title-ui { padding-bottom: 0; }
+  .title-buttons { top: auto; bottom: max(16px, var(--safe-b)); gap: 6px; }
+  .title-btn { min-width: 148px; min-height: 36px; padding: 6px 16px; font-size: 14px; letter-spacing: 0.28em; text-indent: 0.28em; }
+  .title-btn.primary { padding-right: 28px; }
+  .title-endings { display: none; }
 }
 
 /* ———— 矮视口（笔记本 720p / 小窗）———— */

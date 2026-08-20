@@ -2,6 +2,7 @@
 
 import Phaser from "phaser";
 import { PALETTE } from "../config";
+import { paintDragonHead, paintDragonSegment, DRAGON_HEAD_W, DRAGON_HEAD_H, DRAGON_SEG_W, DRAGON_SEG_H } from "./dragonArt";
 
 /** 复盘印章背景 dataURL（DOM 界面用） */
 export let sealBgUrl = "";
@@ -28,6 +29,177 @@ function hex(c: number, a = 1): string {
   const g = (c >> 8) & 0xff;
   const b = c & 0xff;
   return `rgba(${r},${g},${b},${a})`;
+}
+
+/** 标题贴图与「零」印的对齐数据（逻辑像素） */
+export const TITLE_ART = {
+  w: 1120,
+  h: 320,
+  cx: 560,
+  cy: 150,
+  step: 214,
+  sealIndex: 2,
+} as const;
+
+const TITLE_BRUSH = '"Ma Shan Zheng","STXingkai","华文行楷","KaiTi","STKaiti",serif';
+const TITLE_KAISHU = '"KaiTi","STKaiti","KaiTi_GB2312","Noto Serif SC","Source Han Serif SC",serif';
+
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = a + 0x6d2b79f5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+export function titleSealOffset(dispW: number, dispH: number): { x: number; y: number } {
+  const lx = TITLE_ART.cx + (TITLE_ART.sealIndex - 1.5) * TITLE_ART.step;
+  const ly = TITLE_ART.cy + 4;
+  return {
+    x: (lx - TITLE_ART.w / 2) * (dispW / TITLE_ART.w),
+    y: (ly - TITLE_ART.h / 2) * (dispH / TITLE_ART.h),
+  };
+}
+
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function paintCinnabarSeal(ctx: CanvasRenderingContext2D, size: number, glyph: string): void {
+  const pad = size * 0.04;
+  const box = size - pad * 2;
+  roundRectPath(ctx, pad, pad, box, box, size * 0.07);
+  ctx.fillStyle = hex(PALETTE.cinnabar, 0.96);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(246,241,222,0.9)";
+  ctx.lineWidth = size * 0.033;
+  roundRectPath(ctx, pad + size * 0.06, pad + size * 0.06, box - size * 0.12, box - size * 0.12, size * 0.032);
+  ctx.stroke();
+  ctx.globalCompositeOperation = "destination-out";
+  for (let i = 0; i < 20; i++) {
+    ctx.beginPath();
+    ctx.arc(pad + Math.random() * box, pad + Math.random() * box, size * 0.008 + Math.random() * size * 0.022, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = "source-over";
+  ctx.font = `${Math.round(size * 0.58)}px ${TITLE_KAISHU}`;
+  ctx.fillStyle = "#F6F1DE";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(glyph, size / 2, size / 2 + size * 0.018);
+}
+
+/** 标题三字：龙行楷放、师号楷书收，飞白与墨晕按字分寸。 */
+function paintTitleCalligraphy(ctx: CanvasRenderingContext2D): void {
+  const rng = mulberry32(0x51d2e9a7);
+  const specs = [
+    { ch: "龙", i: 0, size: 198, rot: -4.4, dy: -12, dx: -10, brush: true, energy: 1 },
+    { ch: "师", i: 1, size: 156, rot: 1.3, dy: 10, dx: -2, brush: false, energy: 0.38 },
+    { ch: "号", i: 3, size: 148, rot: 2.6, dy: 8, dx: 8, brush: false, energy: 0.34 },
+  ] as const;
+
+  const charX = (i: number) => TITLE_ART.cx + (i - 1.5) * TITLE_ART.step;
+
+  for (const s of specs) {
+    const x = charX(s.i) + s.dx;
+    const y = TITLE_ART.cy + s.dy;
+    const halo = ctx.createRadialGradient(x, y, 8, x, y, s.brush ? 128 : 100);
+    halo.addColorStop(0, s.brush ? "rgba(233,224,200,0.2)" : "rgba(233,224,200,0.13)");
+    halo.addColorStop(1, "rgba(233,224,200,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(x, y, s.brush ? 128 : 100, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (const s of specs) {
+    const ts = 340;
+    const tile = document.createElement("canvas");
+    tile.width = ts;
+    tile.height = ts;
+    const tctx = tile.getContext("2d")!;
+    tctx.textAlign = "center";
+    tctx.textBaseline = "middle";
+    tctx.font = `400 ${s.size}px ${s.brush ? TITLE_BRUSH : TITLE_KAISHU}`;
+    const cx = ts / 2;
+    const cy = ts / 2;
+
+    tctx.fillStyle = "rgba(8,12,18,0.2)";
+    for (let i = 0; i < 7; i++) {
+      tctx.fillText(s.ch, cx + 5 + (rng() - 0.5) * 8, cy + 8 + (rng() - 0.5) * 7);
+    }
+
+    const grad = tctx.createLinearGradient(0, 48, 0, 292);
+    grad.addColorStop(0, "#F8F3E4");
+    grad.addColorStop(0.42, "#E9E0C8");
+    grad.addColorStop(1, "#B7A57A");
+    tctx.fillStyle = grad;
+    tctx.fillText(s.ch, cx, cy);
+
+    tctx.strokeStyle = "rgba(16,22,28,0.42)";
+    tctx.lineWidth = s.brush ? 2.4 : 1.8;
+    tctx.strokeText(s.ch, cx, cy);
+
+    tctx.globalCompositeOperation = "destination-out";
+    const cuts = 28 + Math.floor(s.energy * 90);
+    for (let i = 0; i < cuts; i++) {
+      const x = ts * (0.2 + rng() * 0.6);
+      const y = ts * (0.2 + rng() * 0.6);
+      const ang = -0.42 + rng() * 0.28;
+      const len = 7 + rng() * (12 + s.energy * 26);
+      tctx.strokeStyle = `rgba(0,0,0,${0.07 + rng() * 0.2 * (0.4 + s.energy)})`;
+      tctx.lineWidth = 0.55 + rng() * (0.9 + s.energy * 1.4);
+      tctx.beginPath();
+      tctx.moveTo(x, y);
+      tctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+      tctx.stroke();
+    }
+    if (s.brush) {
+      for (let i = 0; i < 16; i++) {
+        tctx.fillStyle = `rgba(0,0,0,${0.12 + rng() * 0.32})`;
+        tctx.beginPath();
+        tctx.ellipse(
+          ts * (0.28 + rng() * 0.44),
+          ts * (0.26 + rng() * 0.48),
+          0.7 + rng() * 2.6,
+          0.4 + rng() * 1.4,
+          rng() * Math.PI,
+          0, Math.PI * 2,
+        );
+        tctx.fill();
+      }
+    }
+    tctx.globalCompositeOperation = "source-over";
+
+    const x = charX(s.i) + s.dx;
+    const y = TITLE_ART.cy + s.dy;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((s.rot * Math.PI) / 180);
+    ctx.drawImage(tile, -ts / 2, -ts / 2);
+    ctx.restore();
+
+    if (s.brush) {
+      for (let i = 0; i < 11; i++) {
+        const a = rng() * Math.PI * 2;
+        const d = 62 + rng() * 58;
+        const ink = rng() > 0.45;
+        ctx.fillStyle = ink ? `rgba(18,24,30,${0.28 + rng() * 0.28})` : `rgba(233,224,200,${0.35 + rng() * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 0.7 + rng() * 2.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
 }
 
 export function generateTextures(scene: Phaser.Scene): void {
@@ -129,6 +301,81 @@ export function generateTextures(scene: Phaser.Scene): void {
     mist.addColorStop(1, "rgba(139,149,163,0.18)");
     ctx.fillStyle = mist;
     ctx.fillRect(0, 260, W, 80);
+  });
+
+  // 夜雾带（标题与河岸多层叠用）
+  canvasTexture(scene, "tex-mist", 1024, 280, (ctx) => {
+    ctx.clearRect(0, 0, 1024, 280);
+    for (let i = 0; i < 22; i++) {
+      const x = Math.random() * 1024;
+      const y = 70 + Math.random() * 140;
+      const rx = 110 + Math.random() * 240;
+      const ry = 24 + Math.random() * 56;
+      const g = ctx.createRadialGradient(x, y, 6, x, y, rx);
+      g.addColorStop(0, `rgba(196,210,222,${0.16 + Math.random() * 0.14})`);
+      g.addColorStop(1, "rgba(196,210,222,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  // 掠月墨云
+  canvasTexture(scene, "tex-inkcloud", 640, 240, (ctx) => {
+    ctx.clearRect(0, 0, 640, 240);
+    for (const [cx, cy, rx, ry, a] of [
+      [220, 120, 210, 70, 0.22],
+      [400, 100, 170, 54, 0.18],
+      [520, 140, 120, 42, 0.14],
+    ] as const) {
+      const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, rx);
+      g.addColorStop(0, `rgba(18,28,40,${a})`);
+      g.addColorStop(1, "rgba(18,28,40,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, -0.18, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  // 近景竹影（左右压边）
+  canvasTexture(scene, "tex-bamboo-fg", 420, 1080, (ctx) => {
+    ctx.clearRect(0, 0, 420, 1080);
+    const stalks = [
+      { x: 62, h: 1000, w: 15 },
+      { x: 118, h: 860, w: 10 },
+      { x: 176, h: 1048, w: 18 },
+      { x: 248, h: 910, w: 12 },
+      { x: 312, h: 780, w: 9 },
+      { x: 358, h: 940, w: 13 },
+    ];
+    for (const s of stalks) {
+      const y0 = 1080 - s.h;
+      const body = ctx.createLinearGradient(s.x, 0, s.x + s.w, 0);
+      body.addColorStop(0, "rgba(6,10,14,0.96)");
+      body.addColorStop(0.45, "rgba(14,24,22,0.94)");
+      body.addColorStop(1, "rgba(5,9,12,0.97)");
+      ctx.fillStyle = body;
+      ctx.fillRect(s.x, y0, s.w, s.h);
+      for (let y = y0 + 36; y < 1080; y += 48 + (s.x % 19)) {
+        ctx.fillStyle = "rgba(22,36,32,0.9)";
+        ctx.fillRect(s.x - 2, y, s.w + 4, 6);
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.fillRect(s.x - 2, y + 5, s.w + 4, 2);
+      }
+      ctx.strokeStyle = "rgba(8,16,14,0.88)";
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = "round";
+      for (let i = 0; i < 9; i++) {
+        const y = y0 + 70 + i * 78;
+        const dir = i % 2 === 0 ? 1 : -1;
+        ctx.beginPath();
+        ctx.moveTo(s.x + s.w / 2, y);
+        ctx.quadraticCurveTo(s.x + dir * 48, y - 14, s.x + dir * 96, y + 10);
+        ctx.stroke();
+      }
+    }
   });
 
   // 月亮：宣纸色盘面 + 边缘减光 + 偏侧极淡环形坑
@@ -275,83 +522,15 @@ export function generateTextures(scene: Phaser.Scene): void {
     }
   });
 
-  // 标题书法：宣纸渐变笔划 + 墨影 + 飞白侵蚀 + 朱砂落款
-  canvasTexture(scene, "tex-title", 1060, 280, (ctx) => {
-    ctx.clearRect(0, 0, 1060, 280);
-    const chars = ["龙", "师", "零", "号"];
-    const step = 205;
-    const cx0 = 430;
-    const cy = 122;
-    const font = '700 168px "Noto Serif SC","Source Han Serif SC","STSong","SimSun",serif';
-    const drawChars = (dx: number, dy: number, style: string | CanvasGradient, stroke?: string) => {
-      ctx.font = font;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      chars.forEach((c, i) => {
-        const x = cx0 + (i - 1.5) * step + dx;
-        ctx.fillStyle = style as string;
-        ctx.fillText(c, x, cy + dy + (i % 2 === 0 ? -4 : 4) * 0.4);
-        if (stroke) {
-          ctx.lineWidth = 3;
-          ctx.strokeStyle = stroke;
-          ctx.strokeText(c, x, cy + dy);
-        }
-      });
-    };
-    // 墨影
-    drawChars(6, 9, "rgba(8,12,18,0.8)");
-    // 主笔划：宣纸渐变
-    const grad = ctx.createLinearGradient(0, 20, 0, 225);
-    grad.addColorStop(0, "#F6F1DE");
-    grad.addColorStop(0.55, "#E9E0C8");
-    grad.addColorStop(1, "#C6BA98");
-    drawChars(0, 0, grad, "rgba(26,34,43,0.5)");
-    // 飞白侵蚀（笔锋干裂）
-    ctx.globalCompositeOperation = "destination-out";
-    for (let i = 0; i < 1100; i++) {
-      const x = 300 + Math.random() * 480;
-      const y = 22 + Math.random() * 205;
-      ctx.fillStyle = `rgba(0,0,0,${0.05 + Math.random() * 0.18})`;
-      ctx.beginPath();
-      ctx.ellipse(x, y, 0.8 + Math.random() * 3.2, 0.6 + Math.random() * 2, Math.random() * Math.PI, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // 横向飞白丝
-    for (let i = 0; i < 90; i++) {
-      const x = 310 + Math.random() * 440;
-      const y = 30 + Math.random() * 190;
-      ctx.strokeStyle = `rgba(0,0,0,${0.08 + Math.random() * 0.14})`;
-      ctx.lineWidth = 0.8 + Math.random();
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + 14 + Math.random() * 40, y + (Math.random() - 0.5) * 4);
-      ctx.stroke();
-    }
-    ctx.globalCompositeOperation = "source-over";
-    // 朱砂落款印
-    const sx = 850, sy = 196, ss = 64;
-    ctx.fillStyle = "rgba(182,64,54,0.92)";
-    ctx.beginPath();
-    const r = 7;
-    ctx.moveTo(sx - ss / 2 + r, sy - ss / 2);
-    ctx.arcTo(sx + ss / 2, sy - ss / 2, sx + ss / 2, sy + ss / 2, r);
-    ctx.arcTo(sx + ss / 2, sy + ss / 2, sx - ss / 2, sy + ss / 2, r);
-    ctx.arcTo(sx - ss / 2, sy + ss / 2, sx - ss / 2, sy - ss / 2, r);
-    ctx.arcTo(sx - ss / 2, sy - ss / 2, sx + ss / 2, sy - ss / 2, r);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalCompositeOperation = "destination-out";
-    for (let i = 0; i < 16; i++) {
-      ctx.beginPath();
-      ctx.arc(sx - ss / 2 + Math.random() * ss, sy - ss / 2 + Math.random() * ss, 1.5 + Math.random() * 3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalCompositeOperation = "source-over";
-    ctx.font = '700 40px "Noto Serif SC","SimSun",serif';
-    ctx.fillStyle = "#F6F1DE";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("零", sx, sy + 2);
+  // 标题书法：龙行楷放、师号楷书收；「零」印单独贴图
+  canvasTexture(scene, "tex-title", TITLE_ART.w, TITLE_ART.h, (ctx) => {
+    ctx.clearRect(0, 0, TITLE_ART.w, TITLE_ART.h);
+    paintTitleCalligraphy(ctx);
+  });
+
+  canvasTexture(scene, "tex-zeroseal", 192, 192, (ctx) => {
+    ctx.clearRect(0, 0, 192, 192);
+    paintCinnabarSeal(ctx, 192, "零");
   });
 
   // 竹竿节
@@ -409,245 +588,11 @@ export function generateTextures(scene: Phaser.Scene): void {
     ctx.fillText("福", 36, 52);
   });
 
-  // 龙头：紧凑南狮式——圆凸额、短吻上扬、粗眉金瞳、扇形鬃冠、双角后掠
-  canvasTexture(scene, "tex-dragonhead", 210, 170, (ctx) => {
-    ctx.clearRect(0, 0, 210, 170);
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    // ========== 1. 鬃冠：一整束扇形（单一剪影，不再散乱） ==========
-    ctx.beginPath();
-    ctx.moveTo(74, 46);                       // 冠根（额后）
-    ctx.quadraticCurveTo(30, 22, 6, 30);      // 上叶尖
-    ctx.quadraticCurveTo(34, 52, 22, 78);     // 收回
-    ctx.quadraticCurveTo(48, 74, 52, 88);     // 下叶根
-    ctx.quadraticCurveTo(60, 66, 74, 46);
-    ctx.closePath();
-    let maneGrad = ctx.createLinearGradient(70, 20, 10, 90);
-    maneGrad.addColorStop(0, "#3f5c43");
-    maneGrad.addColorStop(1, "#2b4030");
-    ctx.fillStyle = maneGrad;
-    ctx.fill();
-    ctx.strokeStyle = "rgba(127,163,129,0.7)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // 冠上火焰缺刻（三刀）
-    ctx.strokeStyle = "#0d141d";
-    ctx.lineWidth = 3;
-    for (const [x1, y1, x2, y2] of [[40, 34, 34, 52], [24, 42, 20, 60], [34, 58, 30, 72]] as const) {
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    }
-
-    // ========== 2. 双角：每根一条干净主弧 + 一根小杈 ==========
-    const horn = (bx: number, by: number, tipx: number, tipy: number, brx: number, bry: number) => {
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.quadraticCurveTo((bx + tipx) / 2 - 6, (by + tipy) / 2 - 14, tipx, tipy);
-      ctx.strokeStyle = "#C79A45";
-      ctx.lineWidth = 7;
-      ctx.stroke();
-      // 小杈
-      const mx = (bx + tipx) / 2, my = (by + tipy) / 2 - 8;
-      ctx.beginPath();
-      ctx.moveTo(mx, my);
-      ctx.quadraticCurveTo(mx - 8, my - 12, brx, bry);
-      ctx.lineWidth = 4;
-      ctx.stroke();
-      // 角根粗起
-      ctx.beginPath();
-      ctx.arc(bx, by, 5, 0, Math.PI * 2);
-      ctx.fillStyle = "#a87e37";
-      ctx.fill();
-    };
-    horn(78, 38, 52, -6, 40, -2);       // 左角
-    horn(104, 34, 108, -10, 122, -6);   // 右角
-
-    // ========== 3. 头骨主体：紧凑、圆凸额、短吻上扬 ==========
-    ctx.beginPath();
-    ctx.moveTo(66, 60);                          // 后脑下
-    ctx.quadraticCurveTo(58, 34, 86, 28);        // 圆凸额头（高顶）
-    ctx.quadraticCurveTo(112, 24, 130, 40);      // 额到鼻根
-    ctx.quadraticCurveTo(150, 52, 172, 48);      // 短吻上扬
-    ctx.quadraticCurveTo(182, 46, 184, 54);      // 鼻尖圆
-    ctx.quadraticCurveTo(180, 62, 166, 66);      // 吻端回
-    ctx.quadraticCurveTo(156, 70, 150, 80);      // 上唇
-    ctx.lineTo(128, 84);                          // 口裂角
-    // 下颌（短、内收）
-    ctx.quadraticCurveTo(148, 94, 140, 108);
-    ctx.quadraticCurveTo(126, 122, 102, 118);
-    ctx.quadraticCurveTo(74, 112, 64, 92);
-    ctx.quadraticCurveTo(58, 76, 66, 60);
-    ctx.closePath();
-    const skullGrad = ctx.createLinearGradient(60, 20, 170, 120);
-    skullGrad.addColorStop(0, "#719a74");
-    skullGrad.addColorStop(0.5, "#5F8060");
-    skullGrad.addColorStop(1, "#3a5440");
-    ctx.fillStyle = skullGrad;
-    ctx.fill();
-    ctx.strokeStyle = "rgba(143,191,146,0.85)";
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // —— 额甲：圆凸高光 + 竹刻纹 ——
-    const domeGlow = ctx.createRadialGradient(98, 40, 4, 98, 44, 34);
-    domeGlow.addColorStop(0, "rgba(233,224,200,0.28)");
-    domeGlow.addColorStop(1, "rgba(233,224,200,0)");
-    ctx.fillStyle = domeGlow;
-    ctx.beginPath();
-    ctx.ellipse(100, 44, 32, 22, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(30,44,32,0.55)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(96, 34);
-    ctx.quadraticCurveTo(100, 48, 94, 62);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(110, 38);
-    ctx.quadraticCurveTo(114, 50, 108, 64);
-    ctx.stroke();
-
-    // ========== 4. 粗眉 + 金瞳（重点视线） ==========
-    ctx.strokeStyle = "#2c4230";
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(110, 58);
-    ctx.quadraticCurveTo(126, 48, 144, 56);
-    ctx.stroke();
-    // 眼窝
-    ctx.fillStyle = "#1d2c22";
-    ctx.beginPath();
-    ctx.ellipse(130, 66, 12, 9, -0.12, 0, Math.PI * 2);
-    ctx.fill();
-    // 金瞳
-    const eyeGrad = ctx.createRadialGradient(129, 65, 1, 130, 66, 9);
-    eyeGrad.addColorStop(0, "#ffe9ad");
-    eyeGrad.addColorStop(0.6, "#C79A45");
-    eyeGrad.addColorStop(1, "#8a6420");
-    ctx.fillStyle = eyeGrad;
-    ctx.beginPath();
-    ctx.ellipse(130, 66, 9.5, 8, -0.12, 0, Math.PI * 2);
-    ctx.fill();
-    // 瞳（竖瞳，凶）
-    ctx.fillStyle = "#120b04";
-    ctx.beginPath();
-    ctx.ellipse(131, 66, 2.2, 5.5, -0.12, 0, Math.PI * 2);
-    ctx.fill();
-    // 高光
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.beginPath();
-    ctx.arc(127, 62.5, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-
-    // ========== 5. 吻部：鼻孔、上颚线、獠牙 ==========
-    ctx.fillStyle = "#26382a";
-    ctx.beginPath();
-    ctx.ellipse(168, 56, 3.6, 2.6, -0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(160, 62, 2.6, 2, -0.5, 0, Math.PI * 2);
-    ctx.fill();
-    // 上颚唇线
-    ctx.strokeStyle = "rgba(30,44,32,0.6)";
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.moveTo(150, 72);
-    ctx.quadraticCurveTo(162, 70, 172, 58);
-    ctx.stroke();
-    // 双獠牙（上颚两根，短而利）
-    ctx.fillStyle = "#EFE8D2";
-    for (const [tx, ty] of [[146, 82], [154, 80]] as const) {
-      ctx.beginPath();
-      ctx.moveTo(tx - 3, ty - 2);
-      ctx.lineTo(tx + 3, ty - 2);
-      ctx.lineTo(tx, ty + 9);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = "rgba(120,100,60,0.5)";
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
-    }
-    // 口内暗红
-    ctx.fillStyle = "rgba(120,30,24,0.55)";
-    ctx.beginPath();
-    ctx.moveTo(130, 86);
-    ctx.quadraticCurveTo(140, 88, 146, 94);
-    ctx.quadraticCurveTo(136, 98, 128, 92);
-    ctx.closePath();
-    ctx.fill();
-
-    // ========== 6. 短须两根（从吻侧后卷） ==========
-    ctx.strokeStyle = "#C79A45";
-    ctx.lineWidth = 2.6;
-    ctx.beginPath();
-    ctx.moveTo(152, 74);
-    ctx.quadraticCurveTo(136, 96, 112, 102);
-    ctx.quadraticCurveTo(104, 103, 98, 98);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(156, 80);
-    ctx.quadraticCurveTo(148, 102, 128, 112);
-    ctx.stroke();
-
-    // ========== 7. 下颌须（一根，短） ==========
-    ctx.strokeStyle = "#B64036";
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.moveTo(120, 112);
-    ctx.quadraticCurveTo(114, 126, 102, 132);
-    ctx.stroke();
-
-    // ========== 8. 颊鳞一片（衔接龙身的暗示） ==========
-    ctx.strokeStyle = "rgba(30,44,32,0.45)";
-    ctx.lineWidth = 1.8;
-    for (const [ax, ay] of [[80, 84], [88, 94], [78, 100]] as const) {
-      ctx.beginPath();
-      ctx.arc(ax, ay, 8, 0.5, 2.6);
-      ctx.stroke();
-    }
-  });
-
+  // 龙头：南派舞龙彩扎（见 dragonArt.ts）
+  canvasTexture(scene, "tex-dragonhead", DRAGON_HEAD_W, DRAGON_HEAD_H, paintDragonHead);
 
   // 龙身鳞节
-  canvasTexture(scene, "tex-segment", 120, 72, (ctx) => {
-    ctx.clearRect(0, 0, 120, 72);
-    const g = ctx.createLinearGradient(0, 0, 0, 72);
-    g.addColorStop(0, hex(0x6d9270));
-    g.addColorStop(0.5, hex(PALETTE.bamboo));
-    g.addColorStop(1, hex(0x3c5540));
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(6, 36);
-    ctx.quadraticCurveTo(6, 6, 60, 6);
-    ctx.quadraticCurveTo(114, 6, 114, 36);
-    ctx.quadraticCurveTo(114, 66, 60, 66);
-    ctx.quadraticCurveTo(6, 66, 6, 36);
-    ctx.closePath();
-    ctx.fill();
-    // 背鳍
-    ctx.fillStyle = hex(PALETTE.gold, 0.85);
-    for (let i = 0; i < 5; i++) {
-      const x = 24 + i * 18;
-      ctx.beginPath();
-      ctx.moveTo(x, 8);
-      ctx.quadraticCurveTo(x + 4, -6, x + 9, 6);
-      ctx.lineTo(x + 4, 9);
-      ctx.closePath();
-      ctx.fill();
-    }
-    // 鳞线
-    ctx.strokeStyle = hex(0x2f4433, 0.55);
-    ctx.lineWidth = 1.6;
-    for (let i = 0; i < 4; i++) {
-      ctx.beginPath();
-      ctx.moveTo(30 + i * 20, 14);
-      ctx.quadraticCurveTo(22 + i * 20, 36, 30 + i * 20, 58);
-      ctx.stroke();
-    }
-  });
+  canvasTexture(scene, "tex-segment", DRAGON_SEG_W, DRAGON_SEG_H, paintDragonSegment);
 
   // 印章底
   canvasTexture(scene, "tex-sealbg", 128, 128, (ctx) => {

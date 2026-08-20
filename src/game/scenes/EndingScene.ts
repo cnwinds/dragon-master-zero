@@ -99,9 +99,9 @@ export class EndingScene extends Phaser.Scene {
             { x: 1480, y: 330 },
             { x: 1740, y: 300 },
           ],
-      headScale: 1.0,
-      maxRadius: 30,
-      segmentEvery: 96,
+      headScale: 0.7,
+      maxRadius: 32,
+      segmentEvery: 78,
       alpha: 0.95,
     });
 

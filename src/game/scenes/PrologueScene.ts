@@ -91,7 +91,7 @@ export class PrologueScene extends Phaser.Scene {
     // 龙身绞乱：鳞节贴图错位乱转（真实绞龙，不是圆点）
     const bodySegs: Phaser.GameObjects.Image[] = [];
     for (let i = 0; i < 3; i++) {
-      bodySegs.push(this.add.image(0, 0, "tex-segment").setScale(0.72 - i * 0.08).setAlpha(0.92));
+      bodySegs.push(this.add.image(0, 0, "tex-segment").setScale(0.52 - i * 0.06).setAlpha(0.92));
     }
     const tangle = this.add.graphics();
     const drawBodyAt = (x: number, t: number) => {

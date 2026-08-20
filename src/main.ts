@@ -10,6 +10,7 @@ import { ReviewScene } from "./game/scenes/ReviewScene";
 import { EndingScene } from "./game/scenes/EndingScene";
 import { freshRun, type RunState } from "./game/GameState";
 import { loadSave, persistSave, type SaveData } from "./game/systems/saveStore";
+import { bindUiToCanvas } from "./ui/fitOverlay";
 
 declare global {
   interface Window {
@@ -35,6 +36,7 @@ const game = new Phaser.Game({
 });
 
 window.__game = game;
+bindUiToCanvas(game);
 
 // 全局运行状态（跨场景共享；存档用）
 const registry = game.registry;

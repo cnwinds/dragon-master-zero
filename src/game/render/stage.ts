@@ -117,7 +117,7 @@ export class StageRenderer {
     }
 
     // 挂起的旧龙头（师傅的传承物）
-    const old = this.scene.add.image(210, 380, "tex-dragonhead").setScale(0.9).setAlpha(0.66).setTint(0x777f77);
+    const old = this.scene.add.image(210, 380, "tex-dragonhead").setScale(0.38).setAlpha(0.66).setTint(0x777f77);
     this.container.add(old);
     g.lineStyle(2, 0x777f77, 0.6);
     g.beginPath();

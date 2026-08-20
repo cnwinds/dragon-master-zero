@@ -4,6 +4,7 @@
 import Phaser from "phaser";
 import { PALETTE } from "../config";
 import { strokeQuad } from "../render/curve";
+import { DRAGON_HEAD_ORIGIN } from "../render/dragonArt";
 import type { MoveId } from "../../../shared/types";
 
 const GROUND_Y = 790;
@@ -74,7 +75,9 @@ export class TroupeRenderer {
 
   constructor(private scene: Phaser.Scene) {
     this.g = scene.add.graphics();
-    this.head = scene.add.image(0, 0, "tex-dragonhead").setOrigin(0.35, 0.5);
+    this.head = scene.add.image(0, 0, "tex-dragonhead")
+      .setOrigin(DRAGON_HEAD_ORIGIN.x, DRAGON_HEAD_ORIGIN.y)
+      .setScale(0.46);
     this.scan = scene.add.image(0, 0, "tex-scan").setVisible(false);
     for (let i = 0; i < 4; i++) {
       const seg = scene.add.image(0, 0, "tex-segment");
@@ -270,7 +273,7 @@ export class TroupeRenderer {
       const ahead = i === 0 ? this.headNode : this.chain[i - 1];
       const ang = Math.atan2(ahead.y - node.y, ahead.x - node.x);
       seg.setRotation(ang);
-      seg.setScale(0.9 - i * 0.06);
+      seg.setScale(0.64 - i * 0.05);
       seg.setDepth(40 - i);
       if (state.teamStrained) seg.setTint(0x8fae8f);
       else seg.clearTint();
@@ -291,7 +294,7 @@ export class TroupeRenderer {
     this.scanPulse *= 0.9;
     if (this.scanPulse > 0.08) {
       this.scan.setVisible(true);
-      this.scan.setPosition(this.headNode.x + 120, this.headNode.y - 8);
+      this.scan.setPosition(this.headNode.x + 168, this.headNode.y - 10);
       this.scan.setScale(2.6 * this.scanPulse + 1);
       this.scan.setAlpha(Math.min(0.8, this.scanPulse));
     } else {
