@@ -239,6 +239,120 @@ export class AudioBus {
     this.bamboo(ctx.currentTime, gain);
   }
 
+  /** 竹片轻擦（菜单聚焦） */
+  scrape(): void {
+    const ctx = this.ensure();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.noiseBuffer(0.08);
+    const nf = ctx.createBiquadFilter();
+    nf.type = "highpass";
+    nf.frequency.value = 2400;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.09, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+    noise.connect(nf).connect(ng).connect(this.sfxGain!);
+    noise.start(t);
+  }
+
+  /** 确认：短木击 + 低音机械脉冲 */
+  confirm(): void {
+    const ctx = this.ensure();
+    if (!ctx) return;
+    this.bamboo(ctx.currentTime, 1, false);
+    this.beep(true, 0.55);
+  }
+
+  /** 远鼓（开场空间） */
+  farDrum(): void {
+    const ctx = this.ensure();
+    if (!ctx) return;
+    this.drum(ctx.currentTime, 0.42, 0.55, true);
+  }
+
+  private titleStop: (() => void) | null = null;
+  private titleDrumTimer: number | null = null;
+
+  startTitleBed(): void {
+    this.stopTitleBed();
+    const ctx = this.ensure();
+    if (!ctx || !this.musicOn) return;
+    const master = ctx.createGain();
+    master.gain.value = 0.0001;
+    master.connect(this.musicGain!);
+    master.gain.exponentialRampToValueAtTime(1, ctx.currentTime + 0.7);
+
+    const water = ctx.createBufferSource();
+    water.buffer = this.noiseBuffer(4);
+    water.loop = true;
+    const wf = ctx.createBiquadFilter();
+    wf.type = "lowpass";
+    wf.frequency.value = 380;
+    const wg = ctx.createGain();
+    wg.gain.value = 0.04;
+    water.connect(wf).connect(wg).connect(master);
+    water.start();
+
+    const wind = ctx.createBufferSource();
+    wind.buffer = this.noiseBuffer(5);
+    wind.loop = true;
+    const winf = ctx.createBiquadFilter();
+    winf.type = "bandpass";
+    winf.frequency.value = 1700;
+    winf.Q.value = 0.5;
+    const wing = ctx.createGain();
+    wing.gain.value = 0.018;
+    wind.connect(winf).connect(wing).connect(master);
+    wind.start();
+
+    const crowd = ctx.createBufferSource();
+    crowd.buffer = this.noiseBuffer(6);
+    crowd.loop = true;
+    const cf = ctx.createBiquadFilter();
+    cf.type = "bandpass";
+    cf.frequency.value = 460;
+    cf.Q.value = 0.8;
+    const cg = ctx.createGain();
+    cg.gain.value = 0.016;
+    crowd.connect(cf).connect(cg).connect(master);
+    crowd.start();
+
+    const pulse = () => {
+      if (!this.ctx || !this.musicOn) return;
+      const t = this.ctx.currentTime;
+      this.drum(t, 0.32, 0.4, true);
+      const osc = this.ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(392, t);
+      osc.frequency.linearRampToValueAtTime(348, t + 1.7);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.02, t + 0.18);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.1);
+      osc.connect(g).connect(this.musicGain!);
+      osc.start(t);
+      osc.stop(t + 2.2);
+    };
+    this.titleDrumTimer = window.setInterval(pulse, 8000);
+
+    this.titleStop = () => {
+      try { water.stop(); } catch { /* closed */ }
+      try { wind.stop(); } catch { /* closed */ }
+      try { crowd.stop(); } catch { /* closed */ }
+      try { master.disconnect(); } catch { /* closed */ }
+    };
+  }
+
+  stopTitleBed(): void {
+    if (this.titleDrumTimer != null) {
+      window.clearInterval(this.titleDrumTimer);
+      this.titleDrumTimer = null;
+    }
+    this.titleStop?.();
+    this.titleStop = null;
+  }
+
   // ———— 鼓点节拍器（与演出同步） ————
 
   startBeatClock(bpm: number, pattern: DrumPattern, onBeat: (index: number, time: number, strength: number) => void): void {

@@ -9,6 +9,10 @@ export class BootScene extends Phaser.Scene {
     super("Boot");
   }
 
+  preload(): void {
+    /* 首页分层改为程序化生成，启动阶段只等字体 */
+  }
+
   create(): void {
     void this.boot();
   }
@@ -37,6 +41,9 @@ export class BootScene extends Phaser.Scene {
           load('400 198px "Ma Shan Zheng"'),
           load('400 168px "KaiTi"'),
           load('400 168px "STXingkai"'),
+          load('900 124px "Noto Serif SC"'),
+          load('600 38px "Noto Serif SC"'),
+          load('400 24px "Noto Sans SC"'),
           load('700 90px "Noto Serif SC"'),
         ]),
         new Promise<void>((resolve) => window.setTimeout(resolve, 2000)),

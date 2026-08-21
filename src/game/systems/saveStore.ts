@@ -20,6 +20,7 @@ export interface SaveData {
     memories: Array<{ id: string; evidence: string }>;
     phaseTag: string;
   } | null;
+  updatedAt: number;
 }
 
 export function defaultSettings(): Settings {
@@ -33,6 +34,7 @@ export function loadSave(): SaveData {
     reachedEndings: [],
     tutorialSeen: false,
     checkpoint: null,
+    updatedAt: 0,
   };
   try {
     const raw = localStorage.getItem(KEY);
@@ -63,6 +65,7 @@ export function loadSave(): SaveData {
               phaseTag: typeof parsed.checkpoint.phaseTag === "string" ? parsed.checkpoint.phaseTag : "",
             }
           : null,
+      updatedAt: typeof parsed.updatedAt === "number" ? parsed.updatedAt : 0,
     };
   } catch {
     return fallback;
@@ -71,6 +74,7 @@ export function loadSave(): SaveData {
 
 export function persistSave(data: SaveData): void {
   try {
+    data.updatedAt = Date.now();
     localStorage.setItem(KEY, JSON.stringify(data));
   } catch {
     /* 存储被禁用时静默放弃 */

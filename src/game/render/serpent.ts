@@ -80,9 +80,10 @@ function buildParts(scene: Phaser.Scene, opts: Required<SerpentOptions>, dynamic
 }
 
 function radiusAt(opts: Required<SerpentOptions>, t: number): number {
-  const headward = Math.pow(t, 0.7);
-  const chest = Math.sin(Math.min(1, t * 1.05) * Math.PI);
-  return opts.maxRadius * (0.15 + 0.5 * headward + 0.42 * chest * Math.pow(t, 0.35));
+  const u = Math.max(0, Math.min(1, t));
+  // 尾细，腰身尽快到最粗，并一直保持到颈根，好从后面压住脖子
+  const rise = 1 - Math.pow(1 - u, 2.05);
+  return opts.maxRadius * (0.26 + 0.74 * rise);
 }
 
 function drawFrame(parts: BuiltParts, opts: Required<SerpentOptions>, pts: Pt[]): void {
@@ -95,6 +96,14 @@ function drawFrame(parts: BuiltParts, opts: Required<SerpentOptions>, pts: Pt[])
   const total = cum[cum.length - 1] || 1;
   const rAt = (t: number) => radiusAt(opts, t);
 
+  const lastI = smooth.length - 1;
+  const last = smooth[lastI];
+  const neckAng = Math.atan2(last.y - smooth[Math.max(0, lastI - 5)].y, last.x - smooth[Math.max(0, lastI - 5)].x);
+  const neckR = rAt(1);
+  const intoHead = neckR * 1.8;
+  const capX = last.x + Math.cos(neckAng) * intoHead;
+  const capY = last.y + Math.sin(neckAng) * intoHead;
+
   const left: Pt[] = [];
   const right: Pt[] = [];
   for (let i = 0; i < smooth.length; i++) {
@@ -105,6 +114,12 @@ function drawFrame(parts: BuiltParts, opts: Required<SerpentOptions>, pts: Pt[])
     const ny = Math.sin(ang - Math.PI / 2);
     left.push({ x: smooth[i].x + nx * r, y: smooth[i].y + ny * r });
     right.push({ x: smooth[i].x - nx * r, y: smooth[i].y - ny * r });
+  }
+  {
+    const nx = Math.cos(neckAng - Math.PI / 2);
+    const ny = Math.sin(neckAng - Math.PI / 2);
+    left.push({ x: capX + nx * neckR, y: capY + ny * neckR });
+    right.push({ x: capX - nx * neckR, y: capY - ny * neckR });
   }
 
   g.clear();
@@ -269,13 +284,14 @@ function drawFrame(parts: BuiltParts, opts: Required<SerpentOptions>, pts: Pt[])
   }
   for (; segIdx < segs.length; segIdx++) segs[segIdx].setVisible(false);
 
-  const last = smooth[smooth.length - 1];
-  const prev = smooth[Math.max(0, smooth.length - 5)];
-  const ang = Math.atan2(last.y - prev.y, last.x - prev.x);
+  g.fillStyle(opts.bodyColor, opts.alpha);
+  g.fillCircle(last.x, last.y, neckR * 1.08);
+  g.fillCircle(capX, capY, neckR * 0.9);
+
   head.setPosition(last.x, last.y);
-  head.setRotation(ang + opts.headTilt);
+  head.setRotation(neckAng + opts.headTilt);
   if (glow) {
-    glow.setPosition(last.x + Math.cos(ang) * 48, last.y + Math.sin(ang) * 48);
+    glow.setPosition(last.x + Math.cos(neckAng) * 48, last.y + Math.sin(neckAng) * 48);
   }
 }
 
@@ -299,6 +315,20 @@ export class Serpent {
     this.draw(0);
   }
 
+  get headPos(): { x: number; y: number } {
+    return { x: this.parts.head.x, y: this.parts.head.y };
+  }
+
+  get headAngle(): number {
+    return this.parts.head.rotation;
+  }
+
+  /** 冻结到稳定姿态，供开场跳过与离场使用。 */
+  settle(): void {
+    this.t = 0;
+    this.draw(0);
+  }
+
   update(delta: number): void {
     this.t += delta;
     this.draw(this.t);
@@ -307,14 +337,15 @@ export class Serpent {
   private draw(time: number): void {
     const n = this.opts.points.length;
     const pts: Pt[] = this.opts.points.map((p, i) => {
-      const phase = time * 0.00115 - (n - i) * 0.72;
-      const amp = 9 + 16 * Math.sin((i / n) * Math.PI * 0.92 + 0.4);
-      const xWave = Math.cos(phase * 0.55) * (4 + 6 * (i / n));
+      // 5.6 秒呼吸，幅度约 8–14 像素
+      const phase = time * (Math.PI * 2 / 5600) - (n - i) * 0.62;
+      const amp = 8 + 6 * Math.sin((i / n) * Math.PI * 0.92 + 0.4);
+      const xWave = Math.cos(phase * 0.55) * (3 + 5 * (i / n));
       return { x: p.x + xWave, y: p.y + Math.sin(phase) * amp };
     });
     drawFrame(this.parts, this.opts, pts);
     if (this.parts.glow) {
-      this.parts.glow.setAlpha(0.18 + 0.14 * Math.sin(time * 0.0017));
+      this.parts.glow.setAlpha(0.12 + 0.08 * Math.sin(time * 0.0011));
     }
   }
 }

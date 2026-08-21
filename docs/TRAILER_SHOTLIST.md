@@ -151,7 +151,7 @@
 画面：
 
 - 《龙师零号》标题。
-- 英文副标题可选：Dragon Apprentice: Zero。
+- 英文标题：DRAGON MASTER ZERO。
 - 下方依次出现“AI可以学会动作”和“但技艺，需要被传递”。
 - 最后一秒只保留“可运行 Demo / AIGC 互动叙事游戏”。
 
