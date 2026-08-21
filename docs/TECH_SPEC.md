@@ -1,6 +1,6 @@
 # 《龙师零号》技术设计文档
 
-版本：0.2  
+版本：0.3  
 运行环境基线：Node.js 24、现代 Chromium 浏览器  
 目标：支持可离线完成的网页 Demo，并在配置密钥时启用 OpenAI 兼容口令解析
 
@@ -83,9 +83,12 @@ match-game/
 │  │  │  ├─ DragonTeam.ts
 │  │  │  └─ LanternCourse.ts
 │  │  ├─ render/
+│  │  │  ├─ visualDefinitions.ts
+│  │  │  ├─ AZeroRenderer.ts
+│  │  │  ├─ DragonRenderer.ts
+│  │  │  ├─ CastRenderer.ts
 │  │  │  ├─ inkTexture.ts
-│  │  │  ├─ blueprintPath.ts
-│  │  │  └─ bambooDragon.ts
+│  │  │  └─ blueprintPath.ts
 │  │  └─ ui/
 │  │     ├─ actionTray.ts
 │  │     ├─ beatTimeline.ts
@@ -461,14 +464,33 @@ audienceHeat = 35
 - 不拉伸画布。
 - 超出16:9的区域使用夜靛青背景自然延伸。
 
-### 12.2 PC
+### 12.2 共用形象渲染
+
+角色与龙具遵循 `docs/scenes/00A-核心形象与复用资产规范.md`：
+
+- `visualDefinitions.ts` 保存母版颜色、比例、识别标记、锚点、资产版本和细节等级。
+- `AZeroRenderer.ts` 是阿零唯一渲染入口。
+- `DragonRenderer.ts` 是龙头、四段龙身、五根托杆及训练/节庆配件的唯一渲染入口。
+- `CastRenderer.ts` 复用小满、周师傅和三名后续队员母版。
+- 首页、序章、训练、演出和结局只能向共用渲染器传入姿态、状态、LOD、位置、缩放、光照和剧情附件。
+- 禁止在 `TitleScene`、`PerformanceScene` 或结局场景中维护独立的阿零、龙头或角色绘制函数。
+- 共用渲染器输出稳定的握杆、颈根、关节和记忆签锚点；场景动画不得重定义锚点。
+- 母版变更后运行首页、基础演练、最终演出三张归一化截图的视觉回归测试。
+
+纹理策略：
+
+- 程序化母版只生成一次并缓存。
+- `LOD-HERO`、`LOD-GAMEPLAY`、`LOD-THUMB` 和 `LOD-SILHOUETTE` 从同一母版派生。
+- 环境调色在实例层应用，不修改母版固有色纹理。
+
+### 12.3 PC
 
 - 鼠标拖放动作。
 - 点击输入口令。
 - 空格键进行鼓点纠偏。
 - Escape 打开设置。
 
-### 12.3 手机横屏
+### 12.4 手机横屏
 
 - 点选动作后点选拍位。
 - 鼓面固定在右下安全区。
@@ -476,7 +498,7 @@ audienceHeat = 35
 - 竖屏显示旋转提示。
 - 处理刘海屏安全区。
 
-### 12.4 性能预算
+### 12.5 性能预算
 
 - 目标帧率：桌面60 FPS，主流手机横屏不低于30 FPS。
 - 不使用大尺寸逐帧序列。

@@ -62,6 +62,7 @@ cp .env.example .env   # 填入 OPENAI_BASE_URL / OPENAI_API_KEY / OPENAI_MODEL
 
 - `docs/` — 设计文档（GDD / 技术规格 / 场景画面规格 / 验收标准 / 制作计划）
 - `docs/scenes/` — 逐场景画面、动画、布局、交互和素材规格
+- `docs/scenes/00A-核心形象与复用资产规范.md` — 阿零、龙具、舞龙队和核心道具的唯一视觉母版
 - `shared/` — 前后端共享类型与口令解析
 - `src/game/systems/` — 确定性演出引擎、评分、记忆、结局判定
 - `src/game/scenes/` — Phaser 场景（标题/序章/训练/演出/复盘/结局）
